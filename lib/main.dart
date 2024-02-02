@@ -1,7 +1,7 @@
 import 'package:allen/homepage.dart';
 import 'package:allen/pallete.dart';
 import 'package:flutter/material.dart';
-
+// this is the main function
 void main() {
   runApp(const MyApp());
 }
