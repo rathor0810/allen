@@ -1,6 +1,10 @@
 import 'package:allen/feature_list.dart';
+import 'package:allen/open_ai_service.dart';
 import 'package:allen/pallete.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -10,6 +14,63 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final speechToText = SpeechToText();
+  FlutterTts flutterTts = FlutterTts();
+
+  final OpenAiService openAiService = OpenAiService();
+  String lastWords = "";
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    initSpeechToText();
+    initTextToSpeech();
+  }
+
+  Future<void> initTextToSpeech() async {
+    await flutterTts.setSharedInstance(true);
+    setState(() {});
+  }
+
+  Future<void> initSpeechToText() async {
+    await speechToText.initialize();
+    setState(() {});
+  }
+
+  /// Each time to start a speech recognition session
+  Future<void> startListening() async {
+    await speechToText.listen(onResult: onSpeechResult);
+    setState(() {});
+  }
+
+  /// Manually stop the active speech recognition session
+  /// Note that there are also timeouts that each platform enforces
+  /// and the SpeechToText plugin supports setting timeouts on the
+  /// listen method.
+  Future<void> stopListening() async {
+    await speechToText.stop();
+    setState(() {});
+  }
+
+  /// This is the callback that the SpeechToText plugin calls when
+  /// the platform returns recognized words.
+  void onSpeechResult(SpeechRecognitionResult result) {
+    setState(() {
+      lastWords = result.recognizedWords;
+    });
+  }
+
+  Future<void> systemSpeak(String Content) async {
+    await flutterTts.speak(Content);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    speechToText.stop();
+    flutterTts.stop();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,7 +164,17 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () async {
+          if (await speechToText.hasPermission && speechToText.isNotListening) {
+            startListening();
+          } else if (await speechToText.isListening) {
+            final speech = await openAiService.isAtPromptAPI(lastWords);
+            systemSpeak(speech);
+            stopListening();
+          } else {
+            initSpeechToText();
+          }
+        },
         child: const Icon(Icons.mic),
       ),
     );
